@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+
+    <!-- Allow HTTP (cleartext) traffic. Needed if your app hits http:// links. -->
+    <base-config cleartextTrafficPermitted="true" />
+
+    <!-- Common local/dev hosts -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain> <!-- Android emulator -> your computer -->
+        <domain>127.0.0.1</domain>
+    </domain-config>
+
+</network-security-config>
