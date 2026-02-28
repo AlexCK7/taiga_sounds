@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Defines the light and dark themes for the Taiga Sounds application.
+///
+/// Colours and shapes are centralised here to provide a consistent look
+/// across all pages. Adjust the primary and secondary colours to taste.
 class AppTheme {
   static const Color primary = Color(0xFFE53935);
   static const Color secondary = Color(0xFF512DA8);
@@ -26,15 +30,13 @@ class AppTheme {
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: surface,
-
       appBarTheme: AppBarTheme(
         backgroundColor: brightness == Brightness.light ? primary : surfaceAlt,
         foregroundColor: brightness == Brightness.light
             ? Colors.white
-            : scheme.onSurface,
+            : Colors.white.withAlpha((0.92 * 255).round()),
         elevation: 0,
       ),
-
       // GLOBAL CARD STYLE (keeps text readable)
       cardTheme: CardThemeData(
         elevation: 0,
@@ -46,7 +48,6 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
       ),
-
       // GLOBAL INPUT STYLE
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -74,7 +75,6 @@ class AppTheme {
           borderSide: BorderSide(color: primary, width: 1.6),
         ),
       ),
-
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
@@ -86,7 +86,6 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         ),
       ),
-
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: primary,
@@ -98,7 +97,6 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         ),
       ),
-
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
@@ -109,12 +107,10 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         ),
       ),
-
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: primary,
         foregroundColor: Colors.white,
       ),
-
       textTheme: TextTheme(
         headlineSmall: TextStyle(
           fontSize: 28,
@@ -129,7 +125,6 @@ class AppTheme {
         bodyMedium: TextStyle(fontSize: 16, color: scheme.onSurface),
         bodySmall: TextStyle(fontSize: 14, color: scheme.onSurface),
       ),
-
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       ),

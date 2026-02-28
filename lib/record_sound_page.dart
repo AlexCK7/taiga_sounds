@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 /// A placeholder page for recording new audio.
 ///
-/// In a future version, this page will allow users to record their
-/// own sounds using the microphone, preview them, rename the clip
-/// and save it into the sound library. Implementing recording
-/// requires additional plugins (e.g. flutter_sound) and permission
-/// handling. For now we display a friendly message to set
-/// expectations.
+/// In a future version, this page will allow users to record their own
+/// sounds using the microphone, preview them, rename the clip and save
+/// it into the sound library. Implementing recording requires
+/// additional plugins (e.g. flutter_sound) and permission handling.
+/// For now we display a friendly message to set expectations. This
+/// page is not shown in the navigation by default but can be
+/// accessed via development or future features.
 class RecordSoundPage extends StatelessWidget {
   const RecordSoundPage({super.key});
 

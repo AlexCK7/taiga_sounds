@@ -1,17 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import 'package:ffmpeg_kit_audio_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_audio_flutter/return_code.dart';
 
-/// A placeholder page that allows users to combine multiple
-/// existing sounds into a single sound. Users can select a set of
-/// sounds, name the new sound and optionally overlay them. When a
-/// sound is imported the provided [onImport] callback is invoked
-/// so the library can update itself.
+/// A page that allows users to combine multiple existing sounds into a
+/// single sound. Users can select a set of sounds, name the new sound
+/// and optionally overlay them. When a sound is imported the provided
+/// [onImport] callback is invoked so the library can update itself.
 class CreateSoundPage extends StatefulWidget {
-  /// List of available sounds (both built-in and imported) that can be
+  /// List of available sounds (both built‑in and imported) that can be
   /// combined. Each entry contains the label, key (asset path or file
   /// path) and a flag indicating whether it comes from the asset bundle.
   final List<({String label, String key, bool isAsset})> sounds;
@@ -20,13 +20,11 @@ class CreateSoundPage extends StatefulWidget {
   /// and file path of the newly created sound are passed to this
   /// callback so the parent page can import it into the library.
   final void Function(String label, String path) onImport;
-
   const CreateSoundPage({
     super.key,
     required this.sounds,
     required this.onImport,
   });
-
   @override
   State<CreateSoundPage> createState() => _CreateSoundPageState();
 }
@@ -36,12 +34,11 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
   final TextEditingController _nameController = TextEditingController();
 
   /// Whether to overlay selected sounds (mix) instead of concatenating them
-  /// end-to-end.
+  /// end‑to‑end.
   bool _overlayMix = false;
 
   /// Offset in seconds to delay the second sound when overlay mixing.
   double _offsetSeconds = 0.0;
-
   Future<Directory> _soundsDir() async {
     final dir = await getApplicationDocumentsDirectory();
     final sounds = Directory('${dir.path}/sounds');
@@ -67,8 +64,7 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context); // ✅ USED (no unused variable warning)
-
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Create Sound')),
       body: Padding(
@@ -99,7 +95,7 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                       });
                     },
                     title: Text(s.label),
-                    subtitle: Text(s.isAsset ? 'Built-in' : 'Imported'),
+                    subtitle: Text(s.isAsset ? 'Built‑in' : 'Imported'),
                   );
                 },
               ),
@@ -142,7 +138,6 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
               onPressed: () async {
                 final navigator = Navigator.of(context);
                 final messenger = ScaffoldMessenger.of(context);
-
                 final selected = _selectedIndices.toList();
                 if (selected.length < 2) {
                   messenger.showSnackBar(
@@ -150,7 +145,6 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                   );
                   return;
                 }
-
                 final newName = _nameController.text.trim();
                 if (newName.isEmpty) {
                   messenger.showSnackBar(
@@ -160,12 +154,10 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                   );
                   return;
                 }
-
                 final List<String> sources = [];
                 final Directory appDir =
                     await getApplicationDocumentsDirectory();
                 final List<File> tempFiles = [];
-
                 for (final idx in selected) {
                   final s = widget.sounds[idx];
                   if (s.isAsset) {
@@ -190,7 +182,6 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                     sources.add(s.key);
                   }
                 }
-
                 if (sources.length < 2) {
                   messenger.showSnackBar(
                     const SnackBar(
@@ -204,13 +195,11 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                   }
                   return;
                 }
-
                 final soundsDir = await _soundsDir();
                 final sanitized = _sanitizeFilename(newName);
                 final outputFile = File(
                   '${soundsDir.path}/${sanitized}_${DateTime.now().millisecondsSinceEpoch}.mp3',
                 );
-
                 String command;
                 if (!_overlayMix) {
                   final inputString = sources.join('|');
@@ -221,7 +210,6 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                   for (final src in sources) {
                     buf.write(' -i "${src.replaceAll('"', '\\"')}"');
                   }
-
                   String filter;
                   if (sources.length == 2 && _offsetSeconds > 0.0) {
                     final delayMs = (_offsetSeconds * 1000).round();
@@ -231,28 +219,22 @@ class _CreateSoundPageState extends State<CreateSoundPage> {
                     final inputs = sources.length;
                     filter = 'amix=inputs=$inputs:duration=longest';
                   }
-
                   buf
                     ..write(' -filter_complex "')
                     ..write(filter)
                     ..write('"')
                     ..write(' -c:a libmp3lame -q:a 4 "${outputFile.path}"');
-
                   command = buf.toString();
                 }
-
                 final session = await FFmpegKit.execute(command);
                 final returnCode = await session.getReturnCode();
-
                 for (final f in tempFiles) {
                   try {
                     await f.delete();
                   } catch (_) {}
                 }
-
                 if (ReturnCode.isSuccess(returnCode)) {
                   widget.onImport(newName, outputFile.path);
-
                   if (mounted) {
                     messenger.showSnackBar(
                       SnackBar(content: Text('Created $newName')),

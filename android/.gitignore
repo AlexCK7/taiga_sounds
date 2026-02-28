@@ -1,14 +1,80 @@
-gradle-wrapper.jar
-/.gradle
-/captures/
-/gradlew
-/gradlew.bat
-/local.properties
-GeneratedPluginRegistrant.java
-.cxx/
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+build/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
 
-# Remember to never publicly share your keystore.
-# See https://flutter.dev/to/reference-keystore
+# =========================
+# IDEs / Editors
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# =========================
+# OS junk
+# =========================
+.DS_Store
+Thumbs.db
+*.log
+
+# =========================
+# iOS / macOS
+# =========================
+ios/Pods/
+ios/Podfile.lock
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+DerivedData/
+*.xcuserstate
+*.xcworkspace
+*.ipa
+
+macos/Pods/
+macos/Podfile.lock
+macos/.symlinks/
+macos/Flutter/ephemeral/
+
+# =========================
+# Android / Gradle
+# =========================
+android/.gradle/
+android/local.properties
+android/.cxx/
+android/**/build/
+android/captures/
+
+# (Optional) if Android Studio generates these and you don’t want them tracked:
+android/**/GeneratedPluginRegistrant.java
+
+# =========================
+# Secrets / Signing (NEVER COMMIT)
+# =========================
 key.properties
 **/*.keystore
 **/*.jks
+
+# =========================
+# Local / dev-only (keep locally, don’t ship)
+# =========================
+/dev_tools/
+/dev_tools/**
+temp/
+assets/sounds/test.mp3
+
+# =========================
+# Optional: Firebase configs (uncomment if you add Firebase)
+# =========================
+# android/app/google-services.json
+# ios/Runner/GoogleService-Info.plist

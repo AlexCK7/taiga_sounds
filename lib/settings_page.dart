@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// Page for configuring app preferences such as latency mode, stop
-/// behaviour, haptic feedback and theme.
-///
-/// Note: Settings are stored in memory only; to persist them across launches
-/// you can use `SharedPreferences` or a local database.
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final ThemeMode
+  themeMode; // kept for compatibility, not required for UI state
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+
+  const SettingsPage({
+    super.key,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -16,9 +19,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _lowLatency = false;
   bool _stopOnNew = false;
   bool _haptics = true;
-  bool _darkMode = false;
 
-  Future<void> _showNotImplemented(String feature) async {
+  void _showNotImplemented(String feature) {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -33,12 +35,15 @@ class _SettingsPageState extends State<SettingsPage> {
       fontWeight: FontWeight.w600,
     );
 
+    // ✅ Always reflect the real current theme (even if RootPage has old props)
+    final isDarkNow = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Playback',
             subtitle: 'Tweak how sounds behave and feel.',
           ),
@@ -47,7 +52,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               children: [
                 SwitchListTile(
-                  title: const Text('Low‑latency mode'),
+                  title: const Text('Low-latency mode'),
                   subtitle: const Text('Reduce buffering for minimal delay'),
                   value: _lowLatency,
                   onChanged: (val) => setState(() => _lowLatency = val),
@@ -74,9 +79,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 const Divider(height: 1),
                 SwitchListTile(
                   title: const Text('Dark mode'),
-                  subtitle: const Text('Requires a dark theme to be wired up'),
-                  value: _darkMode,
-                  onChanged: (val) => setState(() => _darkMode = val),
+                  subtitle: const Text('Toggle the app theme'),
+                  value: isDarkNow,
+                  onChanged: (val) {
+                    widget.onThemeModeChanged(
+                      val ? ThemeMode.dark : ThemeMode.light,
+                    );
+                    // No local setState needed — theme change will rebuild via InheritedWidget
+                  },
                   secondary: const Icon(Icons.dark_mode_outlined),
                 ),
               ],
@@ -84,13 +94,11 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Tip: These toggles are currently session‑only (not persisted).',
+            'Tip: Theme switching is live now. Other toggles are session-only.',
             style: muted,
           ),
-
           const SizedBox(height: 22),
-
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Library management',
             subtitle: 'Backup, restore, or reset your library.',
           ),
@@ -149,20 +157,17 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final subtitleStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withAlpha((0.70 * 255).toInt()),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: theme.textTheme.titleMedium),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
-          Text(
-            subtitle!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withAlpha(
-                (0.70 * 255).toInt(),
-              ),
-            ),
-          ),
+          Text(subtitle!, style: subtitleStyle),
         ],
       ],
     );

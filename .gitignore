@@ -43,3 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local / generated
+android/.gradle/
+android/local.properties
+temp/
+
+# Local test assets
+assets/sounds/test.mp3
+
+# Dev-only tools (keep locally, don’t ship)
+/dev_tools/
+/dev_tools/**

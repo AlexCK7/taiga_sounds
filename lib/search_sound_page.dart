@@ -15,7 +15,8 @@ class _SoundResult {
 
 /// A page that lets the user search for sounds from MyInstants and preview
 /// them before downloading. A single [AudioPlayer] is used for all previews
-/// to avoid creating multiple ExoPlayer instances on Android.
+/// to avoid creating multiple ExoPlayer instances on Android. Results are
+/// deduped by URL to avoid duplicates.
 class SearchSoundPage extends StatefulWidget {
   /// Callback invoked when a sound is downloaded and saved. The label and
   /// file path of the imported sound are provided so the parent page can
@@ -30,20 +31,16 @@ class SearchSoundPage extends StatefulWidget {
 
 class _SearchSoundPageState extends State<SearchSoundPage> {
   final TextEditingController _controller = TextEditingController();
-
   bool _loading = false;
   String? _error;
   List<_SoundResult> _results = [];
-
   // Single player used for previewing results. Using one player avoids
   // multiple ExoPlayer instances and prevents playback conflicts.
   final AudioPlayer _previewPlayer = AudioPlayer();
   String? _currentPreviewUrl;
   bool _disposed = false;
-
   // HTTP client (reused for all requests)
   final http.Client _client = http.Client();
-
   static const Map<String, String> _headers = {
     // Some hosts block unknown clients; a realistic UA helps.
     'User-Agent':
@@ -52,7 +49,6 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
     'Accept-Language': 'en-US,en;q=0.9',
     'Connection': 'keep-alive',
   };
-
   static const List<_SoundResult> _trendingBase = [
     _SoundResult(
       label: 'Bruh',
@@ -71,9 +67,7 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
       url: 'https://www.myinstants.com/media/sounds/violin.mp3',
     ),
   ];
-
   late List<_SoundResult> _trending;
-
   @override
   void initState() {
     super.initState();
@@ -102,24 +96,20 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
   Future<void> _search(String query) async {
     final q = query.trim();
     if (q.isEmpty) return;
-
     setState(() {
       _loading = true;
       _error = null;
       _results = [];
     });
-
     // Use the English search path explicitly for consistency.
     final encoded = Uri.encodeQueryComponent(q);
     final uri = Uri.parse(
       'https://www.myinstants.com/en/search/?name=$encoded',
     );
-
     try {
       final resp = await _client
           .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 15));
-
       if (resp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -128,24 +118,17 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
         });
         return;
       }
-
       final html = resp.body;
-
       // Capture audio paths like: /media/sounds/whatever.mp3 .wav or .ogg.
-      // Avoid complicated escapes to minimise invalid regex issues.
       final urlRegex = RegExp(
         r'/media/sounds/[^\s>]+\.(mp3|wav|ogg)',
         caseSensitive: false,
       );
-
       final matches = urlRegex.allMatches(html);
-
       final Map<String, _SoundResult> dedup = {};
       for (final m in matches) {
         final path = m.group(0);
         if (path == null) continue;
-
-        // Strip quotes or other punctuation if captured.
         final cleanPath = path
             .replaceAll('"', '')
             .replaceAll("'", '')
@@ -153,27 +136,20 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
             .replaceAll(']', '')
             .replaceAll(',', '')
             .trim();
-
         if (!cleanPath.startsWith('/media/sounds/')) continue;
-
         final fullUrl = 'https://www.myinstants.com$cleanPath';
         if (dedup.containsKey(fullUrl)) continue;
-
         final fileName = cleanPath.split('/').last;
         var label = fileName
             .replaceAll(RegExp(r'_+'), ' ')
             .replaceAll(RegExp(r'\.(mp3|wav|ogg)\$', caseSensitive: false), '')
             .trim();
-
         // Remove trailing timestamps like _1700000000000
         label = label.replaceAll(RegExp(r'[_\-\s]\d{10,}\$?'), '').trim();
-
         if (label.isEmpty) label = 'Sound';
-
         dedup[fullUrl] = _SoundResult(label: label, url: fullUrl);
         if (dedup.length >= 30) break;
       }
-
       if (!mounted) return;
       setState(() {
         _results = dedup.values.toList(growable: false);
@@ -211,18 +187,15 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
   Future<void> _preview(_SoundResult result) async {
     if (_disposed) return;
     final url = result.url;
-
     // If the same URL is already playing, toggle playback off.
     if (_currentPreviewUrl == url && _previewPlayer.playing) {
       await _stopPreview();
       return;
     }
-
     // Always stop before switching sources; improves stability on Android.
     try {
       await _previewPlayer.stop();
     } catch (_) {}
-
     try {
       await _previewPlayer.setUrl(url, headers: _headers);
       if (!mounted) return;
@@ -249,19 +222,14 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
   Future<void> _download(_SoundResult result) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-
     setState(() => _loading = true);
-
-    // Stop preview so ExoPlayer isn't juggling streams while we download.
     try {
       await _previewPlayer.stop();
     } catch (_) {}
-
     try {
       final resp = await _client
           .get(Uri.parse(result.url), headers: _headers)
           .timeout(const Duration(seconds: 25));
-
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         if (!mounted) return;
         setState(() => _loading = false);
@@ -270,22 +238,16 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
         );
         return;
       }
-
       final bytes = resp.bodyBytes;
       final soundsDir = await _soundsDir();
-
       final cleanLabel = result.label.trim().isEmpty ? 'Sound' : result.label;
       final fileName =
           '${_sanitizeFilename(cleanLabel)}_${DateTime.now().millisecondsSinceEpoch}.mp3';
-
       final file = File('${soundsDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
-
       widget.onImport(cleanLabel, file.path);
-
       if (!mounted) return;
       setState(() => _loading = false);
-
       messenger.showSnackBar(SnackBar(content: Text('Imported: $cleanLabel')));
       navigator.pop();
     } on SocketException catch (_) {
@@ -332,11 +294,9 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     final query = _controller.text.trim();
     final showResults = query.isNotEmpty;
     final list = showResults ? _results : _trending;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discover Sounds'),
@@ -399,7 +359,6 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
                       final isPlaying =
                           _currentPreviewUrl == res.url &&
                           _previewPlayer.playing;
-
                       return Card(
                         margin: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -457,16 +416,13 @@ class _SearchSoundPageState extends State<SearchSoundPage> {
 class _DiscoverEmptyState extends StatelessWidget {
   final bool showResults;
   final VoidCallback onTryTrending;
-
   const _DiscoverEmptyState({
     required this.showResults,
     required this.onTryTrending,
   });
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),

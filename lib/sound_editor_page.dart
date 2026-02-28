@@ -5,8 +5,10 @@ import 'package:just_audio/just_audio.dart';
 import 'package:ffmpeg_kit_audio_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_audio_flutter/return_code.dart';
 
-/// A page for editing a downloaded sound. Allows the user to play the
-/// sound, rename it, and trim it (Trim & Replace) using FFmpegKit.
+/// A page for editing a downloaded sound. Allows the user to play
+/// the sound, rename it, and trim it (Trim & Replace) using FFmpegKit.
+/// On completion the page returns a Map indicating any rename or
+/// replacement so the caller can update its manifest and UI.
 class SoundEditorPage extends StatefulWidget {
   final String label;
   final String path;
@@ -19,16 +21,13 @@ class SoundEditorPage extends StatefulWidget {
 class _SoundEditorPageState extends State<SoundEditorPage> {
   late final AudioPlayer _player;
   late final TextEditingController _nameController;
-
   bool _loading = true;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _playing = false;
-
   // Trim range
   Duration _trimStart = Duration.zero;
   Duration _trimEnd = Duration.zero;
-
   @override
   void initState() {
     super.initState();
@@ -43,7 +42,6 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
       await _player.load();
       _duration = _player.duration ?? Duration.zero;
       _trimEnd = _duration;
-
       _player.positionStream.listen((pos) {
         if (!mounted) return;
         setState(() => _position = pos);
@@ -61,7 +59,7 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
     super.dispose();
   }
 
-  /// Rename the file on disk and return.
+  /// Rename the file on disk and return. Pops with map {oldPath, newPath, newLabel}.
   Future<void> _save() async {
     final newLabel = _nameController.text.trim();
     if (newLabel.isEmpty || newLabel == widget.label) {
@@ -69,22 +67,23 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
       Navigator.of(context).pop();
       return;
     }
-
     final file = File(widget.path);
     final dir = file.parent;
     final ext = widget.path.toLowerCase().endsWith('.wav') ? 'wav' : 'mp3';
     final newName =
         '${_sanitizeFilename(newLabel)}_${DateTime.now().millisecondsSinceEpoch}.$ext';
     final newFile = File('${dir.path}/$newName');
-
     try {
       await file.rename(newFile.path);
     } catch (e) {
       debugPrint('RENAME ERROR: $e');
     }
-
     if (!mounted) return;
-    Navigator.of(context).pop();
+    Navigator.of(context).pop({
+      'oldPath': widget.path,
+      'newPath': newFile.path,
+      'newLabel': newLabel,
+    });
   }
 
   /// Trim the audio between [_trimStart] and [_trimEnd] and replace the original.
@@ -92,10 +91,8 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
   Future<void> _trimAndSave() async {
     final input = File(widget.path);
     final dir = input.parent;
-
     final isWav = widget.path.toLowerCase().endsWith('.wav');
     final ext = isWav ? 'wav' : 'mp3';
-
     if (_duration == Duration.zero) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,27 +109,18 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
       }
       return;
     }
-
-    // seconds with millisecond precision
     final startSec = _trimStart.inMilliseconds / 1000.0;
     final endSec = _trimEnd.inMilliseconds / 1000.0;
-
     final tmpOut = File(
       '${dir.path}/${_sanitizeFilename(_nameController.text)}_trim_${DateTime.now().millisecondsSinceEpoch}.$ext',
     );
-
-    // mp3: re-encode for reliable cuts, wav: copy is fine
     final codecArgs = isWav ? '-c copy' : '-c:a libmp3lame -q:a 2';
-
     final command =
         '-y -ss $startSec -to $endSec -i "${input.path}" $codecArgs "${tmpOut.path}"';
-
     try {
       if (mounted) setState(() => _loading = true);
-
       final session = await FFmpegKit.execute(command);
       final rc = await session.getReturnCode();
-
       if (!ReturnCode.isSuccess(rc)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -141,23 +129,19 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
         }
         return;
       }
-
       // Replace original
       try {
         await input.delete();
       } catch (_) {}
       await tmpOut.rename(widget.path);
-
       // Reload player
       await _player.setAudioSource(AudioSource.file(widget.path));
       await _player.load();
-
       _duration = _player.duration ?? Duration.zero;
       _trimStart = Duration.zero;
       _trimEnd = _duration;
       _position = Duration.zero;
       _playing = false;
-
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -208,7 +192,6 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     // Playback controls
                     Row(
                       children: [
@@ -246,9 +229,7 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
                         Text(_formatTime(_position)),
                       ],
                     ),
-
                     const SizedBox(height: 16),
-
                     // Trim sliders
                     Text('Trim Start: ${_formatTime(_trimStart)}'),
                     Slider(
@@ -268,9 +249,7 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
                         }
                       },
                     ),
-
                     const SizedBox(height: 8),
-
                     Text('Trim End: ${_formatTime(_trimEnd)}'),
                     Slider(
                       min: 0.0,
@@ -289,9 +268,7 @@ class _SoundEditorPageState extends State<SoundEditorPage> {
                         }
                       },
                     ),
-
                     const SizedBox(height: 16),
-
                     ElevatedButton(
                       onPressed: _save,
                       child: const Text('Rename & Save'),
